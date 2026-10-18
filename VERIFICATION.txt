@@ -1,0 +1,12 @@
+Verified on Linux with g++ and rustc 1.99.1.
+
+safe: PASS (C++, Rust index 10 and 1)
+check-fail: PASS (8 expected diagnostics)
+panic: PASS (runtime bounds check)
+uaf: PASS (exit 1, heap-use-after-free)
+double-free: PASS (exit 1, attempting double-free)
+iterator: PASS (exit 1, heap-use-after-free)
+overflow: PASS (exit 1, stack-buffer-overflow)
+race: PASS (exit 66, data race)
+leak: PASS (exit 1, detected memory leaks)
+null: PASS (exit 1, load of null pointer)
