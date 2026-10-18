@@ -30,14 +30,14 @@ bash scripts/run.sh unsafe null
 
 ## 파일과 비교 항목
 
-| 유형 | C++ 오류 (`cpp/unsafe.cpp` 실행 인자) | Rust 컴파일 실패 (`rust/compile_fail/`) | 수정 코드 |
-|---|---|---|---|
-| 해제 후 사용 | `uaf` | `uaf.rs`: E0382, `dangling.rs`: E0515 | 소유권을 유지하거나 소유한 `String` 반환 |
-| 이중 해제 | `double-free` | `double_free.rs`: E0382 | RAII, 소유권 이동 |
-| 반복자 무효화 | `iterator` | `iterator.rs`: E0502 | 추가할 값을 수집한 후 확장 |
-| 버퍼 범위 초과 | `overflow` | `constant_bounds.rs`: 기본 deny lint | C++ `at`, Rust `get`, 별도 panic 예제 |
-| 데이터 레이스 | `race` | `race.rs`: E0499, `rc_thread.rs`: E0277 | 원자적 카운터 + join |
-| 누수 / 널 역참조 | `leak`, `null` | `option.rs`: E0308 | RAII, `optional`/`Option` |
+| 유형 | C++ 오류 (`cpp/unsafe.cpp` 실행 인자) | C 오류 (`cpp/unsafe_c.c` 실행 인자) | Rust 컴파일 실패 (`rust/compile_fail/`) | 수정 코드 |
+|---|---| --- |---|---|
+| 해제 후 사용 | `uaf` | `uaf` | `uaf.rs`: E0382, `dangling.rs`: E0515 | 소유권을 유지하거나 소유한 `String` 반환 |
+| 이중 해제 | `double-free` | `double-free` | `double_free.rs`: E0382 | RAII, 소유권 이동 |
+| 반복자 무효화 | `iterator` | 예제 없음 | `iterator.rs`: E0502 | 추가할 값을 수집한 후 확장 |
+| 버퍼 범위 초과 | `overflow` | `overflow` | `constant_bounds.rs`: 기본 deny lint | C++ `at`, Rust `get`, 별도 panic 예제 |
+| 데이터 레이스 | `race` | 예제 없음 | `race.rs`: E0499, `rc_thread.rs`: E0277 | 원자적 카운터 + join |
+| 누수 / 널 역참조 | `leak`, `null` | `leak`, `null` | `option.rs`: E0308 | RAII, `optional`/`Option` |
 
 전체 수정 코드는 `cpp/safe.cpp`, `rust/safe.rs`에 있습니다. `rust/bounds_panic.rs`는 입력 인덱스를 사용하므로 상수 인덱스 lint와 런타임 검사를 분리해서 보여줍니다. 단독 실행도 가능합니다.
 
