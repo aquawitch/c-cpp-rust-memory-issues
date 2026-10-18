@@ -31,12 +31,12 @@ bash scripts/run.sh unsafe null
 ## 파일과 비교 항목
 
 | 유형 | C++ 오류 (`cpp/unsafe.cpp` 실행 인자) | C 오류 (`cpp/unsafe_c.c` 실행 인자) | Rust 컴파일 실패 (`rust/compile_fail/`) | 수정 코드 |
-|---|---| --- |---|---|
+|---|---|---|---|---|
 | 해제 후 사용 | `uaf` | `uaf` | `uaf.rs`: E0382, `dangling.rs`: E0515 | 소유권을 유지하거나 소유한 `String` 반환 |
 | 이중 해제 | `double-free` | `double-free` | `double_free.rs`: E0382 | RAII, 소유권 이동 |
-| 반복자 무효화 | `iterator` | 예제 없음 | `iterator.rs`: E0502 | 추가할 값을 수집한 후 확장 |
+| 반복자 무효화 | `iterator` | `iterator` | `iterator.rs`: E0502 | 추가할 값을 수집한 후 확장 |
 | 버퍼 범위 초과 | `overflow` | `overflow` | `constant_bounds.rs`: 기본 deny lint | C++ `at`, Rust `get`, 별도 panic 예제 |
-| 데이터 레이스 | `race` | 예제 없음 | `race.rs`: E0499, `rc_thread.rs`: E0277 | 원자적 카운터 + join |
+| 데이터 레이스 | `race` | `race` | `race.rs`: E0499, `rc_thread.rs`: E0277 | 원자적 카운터 + join |
 | 누수 / 널 역참조 | `leak`, `null` | `leak`, `null` | `option.rs`: E0308 | RAII, `optional`/`Option` |
 
 전체 수정 코드는 `cpp/safe.cpp`, `rust/safe.rs`에 있습니다. `rust/bounds_panic.rs`는 입력 인덱스를 사용하므로 상수 인덱스 lint와 런타임 검사를 분리해서 보여줍니다. 단독 실행도 가능합니다.
@@ -62,10 +62,23 @@ rustc --edition=2021 rust/bounds_panic.rs -o build/bounds-panic
 
 ## 순수 C 예제
 
-`cpp/unsafe_c.c`는 UAF·이중 해제·범위 초과·누수·널 역참조의 C11 버전입니다. 예를 들어:
+`cpp/unsafe_c.c`는 UAF·이중 해제·순회 포인터 무효화·범위 초과·데이터 레이스·누수·널 역참조의 C11 버전입니다. 스레드는 POSIX pthreads를 사용하므로 Linux/WSL 등 pthreads 지원 환경이 필요합니다.
+
+```bash
+bash scripts/run.sh unsafe-c iterator  # AddressSanitizer: heap-use-after-free
+bash scripts/run.sh unsafe-c race      # ThreadSanitizer: data race
+# 다른 인자: uaf, double-free, overflow, leak, null
+```
+
+- `iterator`: C의 배열 순회 포인터를 저장한 뒤 `realloc()`으로 버퍼를 확장하고 이전 포인터를 역참조합니다. C++ 표준 반복자 대신 포인터의 수명 무효화를 비교합니다. 성공한 `realloc()` 이후에는 반환된 포인터로부터 순회 포인터를 다시 만들어야 합니다. ASan에서는 보통 메모리가 이동하여 UAF가 검출되지만, 실제 재할당 주소와 진단 여부는 실행 환경에 따라 달라집니다.
+- `race`: 두 pthread가 일반 `int` 카운터를 동기화 없이 증가시킵니다. C에서도 미정의 동작이며, 최종 값이 200000이어도 안전하다는 뜻은 아닙니다. `pthread_join()`은 종료를 기다릴 뿐 증가 연산끼리 동기화하지 않습니다. 수정하려면 mutex 또는 C11 `_Atomic`과 `atomic_fetch_add()`를 사용합니다.
+
+직접 빌드할 수도 있습니다. race는 AddressSanitizer와 별도로 빌드합니다.
 
 ```bash
 mkdir -p build
-cc -std=c11 -O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer cpp/unsafe_c.c -o build/unsafe-c
-./build/unsafe-c uaf  # 다른 인자: double-free, overflow, leak, null
+cc -std=c11 -O0 -g -pthread -fsanitize=address,undefined -fno-omit-frame-pointer cpp/unsafe_c.c -o build/unsafe-c
+./build/unsafe-c iterator
+cc -std=c11 -O0 -g -pthread -fsanitize=thread -fno-omit-frame-pointer cpp/unsafe_c.c -o build/unsafe-c-race
+./build/unsafe-c-race race
 ```

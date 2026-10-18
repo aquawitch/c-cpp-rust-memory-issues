@@ -10,3 +10,8 @@ overflow: PASS (exit 1, stack-buffer-overflow)
 race: PASS (exit 66, data race)
 leak: PASS (exit 1, detected memory leaks)
 null: PASS (exit 1, load of null pointer)
+
+C11/pthreads unsafe-c: PASS for uaf, double-free, iterator, overflow, race, leak, null
+C iterator: AddressSanitizer heap-use-after-free (exit 1)
+C race: ThreadSanitizer data race (exit 66)
+Script: bash -n, git diff --check, C++ unsafe uaf regression PASS

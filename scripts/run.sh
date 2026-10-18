@@ -35,17 +35,22 @@ case "$mode" in
     cat build/panic.log
     echo 'PASS: runtime bounds check triggered'
     ;;
-  unsafe)
+  unsafe|unsafe-c)
     demo=${2:-uaf}
     case "$demo" in uaf|double-free|iterator|overflow|race|leak|null) ;; *) echo 'Unknown demo'; exit 2;; esac
     sanitizer=address,undefined
     if [[ "$demo" == race ]]; then sanitizer=thread; fi
-    "${CXX:-g++}" -std=c++17 -O0 -g -fno-omit-frame-pointer -pthread \
-      "-fsanitize=$sanitizer" cpp/unsafe.cpp -o "build/unsafe-$demo"
+    if [[ "$mode" == unsafe-c ]]; then
+      "${CC:-cc}" -std=c11 -O0 -g -fno-omit-frame-pointer -pthread \
+        "-fsanitize=$sanitizer" cpp/unsafe_c.c -o "build/$mode-$demo"
+    else
+      "${CXX:-g++}" -std=c++17 -O0 -g -fno-omit-frame-pointer -pthread \
+        "-fsanitize=$sanitizer" cpp/unsafe.cpp -o "build/$mode-$demo"
+    fi
     echo "Running intentional undefined behavior: $demo ($sanitizer)"
     # A nonzero exit is expected, but inspect the diagnostic: sanitizer startup
     # failures are not evidence that a bug was detected.
-    ASAN_OPTIONS=detect_leaks=1 "./build/unsafe-$demo" "$demo"
+    ASAN_OPTIONS=detect_leaks=1 "./build/$mode-$demo" "$demo"
     ;;
-  *) echo 'Usage: bash scripts/run.sh {safe|check-fail|panic|unsafe [uaf|double-free|iterator|overflow|race|leak|null]}'; exit 2;;
+  *) echo 'Usage: bash scripts/run.sh {safe|check-fail|panic|unsafe|unsafe-c [uaf|double-free|iterator|overflow|race|leak|null]}'; exit 2;;
 esac
